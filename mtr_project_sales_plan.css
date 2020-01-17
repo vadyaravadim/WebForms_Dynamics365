@@ -1,4 +1,4 @@
-﻿table.dataTable {
+table.dataTable {
     width: 100%;
     margin: 0 auto;
     clear: both;
@@ -93,7 +93,8 @@ table.dataTable.stripe tbody tr.odd.selected, table.dataTable.display tbody tr.o
 }
 
 table.dataTable.hover tbody tr:hover, table.dataTable.display tbody tr:hover {
-    background-color: #f6f6f6
+    background-color: #f6f6f6;
+    cursor: pointer;
 }
 
 table.dataTable.hover tbody tr:hover.selected, table.dataTable.display tbody tr:hover.selected {
@@ -266,6 +267,7 @@ table.dataTable, table.dataTable th, table.dataTable td {
 
 .controls {
     width: 100%;
+    display: flex;
 }
 
 #submit {
@@ -291,9 +293,14 @@ body {
     border: 1px solid #e6e6e6;
 }
 
+select {
+    border-radius: 5px;
+    border: 1px solid #e6e6e6;
+}
+
 .select_control {
     display: block;
-    margin: 10px 20px;
+    margin: 10px 5px 10px 20px;
     border-radius: 5px;
     padding: 2px 5px;
     border: 1px solid #e6e6e6;
@@ -425,6 +432,10 @@ dataTables_length {
     padding: 0 !important
 }
 
+.titleloader {
+    margin-top: 20%;
+}
+
 .dataTables_wrapper.no-footer .dataTables_scrollBody {
     border-bottom: 1px solid #111
 }
@@ -471,23 +482,22 @@ dataTables_length {
     background-color: #e6e6e6;
     opacity: 0.8;
     display: none;
+    justify-content: center;
+    align-items: center;
 }
 
 #loader {
     position: absolute;
-    left: 50%;
-    top: 50%;
     z-index: 1;
     width: 150px;
     height: 150px;
-    margin: -75px 0 0 -75px;
-    border: 16px solid #f3f3f3;
+    border: 5px solid #fff;
     border-radius: 50%;
-    border-top: 16px solid #3498db;
-    width: 120px;
-    height: 120px;
-    -webkit-animation: spin 2s linear infinite;
-    animation: spin 2s linear infinite;
+    border-top: 5px solid #2c2c2c;
+    width: 100px;
+    height: 100px;
+    -webkit-animation: spin 1s linear infinite;
+    animation: spin 1s linear infinite;
 }
 
 @-webkit-keyframes spin {
