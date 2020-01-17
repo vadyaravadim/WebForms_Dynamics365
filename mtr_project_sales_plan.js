@@ -1,5 +1,4 @@
-function openModalBox()
-{
+function openModalBox() {
     let windowOptions = {
         height: (window.screen.height / 100) * 60,
         width: (window.screen.height / 100) * 80
@@ -7,15 +6,13 @@ function openModalBox()
     Xrm.Navigation.openWebResource("mtr_project_sales_plan.html", windowOptions);
 }
 
-function activateLoader()
-{
+function activateLoader() {
     const loader = document.getElementById("backloader");
     loader.style.display = "flex";
     window.addEventListener("beforeunload", eventHandlerCloseWindow);
 }
 
-function eventHandlerCloseWindow(evt)
-{
+function eventHandlerCloseWindow(evt) {
     let message = "Данные в процессе сохранения. Точно закрыть страницу?";
     if (typeof evt == "undefined") {
         evt = window.event;
@@ -26,29 +23,30 @@ function eventHandlerCloseWindow(evt)
     return message;
 }
 
-function deactivateLoader()
-{
+function deactivateLoader() {
     const loader = document.getElementById("backloader");
     loader.style.display = "none";
     window.removeEventListener("beforeunload", eventHandlerCloseWindow);
 }
 
 // Костыль из-за неправильно функционирующего поиска
-function removeAdditionsAttr()
-{
-  let inputSearch = $('[type="search"]');
-  if (inputSearch[0] != undefined && inputSearch[0] != null)
-  {
-    inputSearch[0].attributes.removeNamedItem("type");
-  }
+function removeAdditionsAttr() {
+    let inputSearch = $('[type="search"]');
+    if (inputSearch[0] != undefined && inputSearch[0] != null)
+    {
+        inputSearch[0].attributes.removeNamedItem("type");
+    }
 }
 
-$(document).ready(() =>
-{
+$(document).ready(() => {
     $("#submit").click(() => {
         if (dataRows().count > 0) {
             activateLoader();
-            createProjectPlans();
+            new Promise((resolve, reject) => {
+                createProjectPlans(resolve, reject);
+            }).then((resolve) => {
+                deactivateLoader();
+            });
         }
     });
 
@@ -57,14 +55,17 @@ $(document).ready(() =>
             style: "multi"
         },
         data: getBuilding(),
-        columns: [{ title: "Название" }, { title: "Тип" }, { title: "Id", visible: false }]
+        columns: [
+            { title: "Название" },
+            { title: "Тип" },
+            { title: "Id", visible: false }
+        ]
     });
 
     removeAdditionsAttr();
 });
 
-function getBuilding()
-{
+function getBuilding() {
     let dataSet = [];
     $.ajax({
         type: "GET",
@@ -89,13 +90,13 @@ function getBuilding()
         },
         error: function (xhr, textStatus, errorThrown)
         {
-            console.log(textStatus + " " + errorThrown);
+            console.error(textStatus + " " + errorThrown);
         }
     });
     return dataSet;
 }
 
-let dataRows = function () {
+let dataRows = function() {
     let table = $("#mtr_building").DataTable();
     let rows = table.rows(".selected").select().data();
     let count = table.rows(".selected").count();
@@ -105,25 +106,27 @@ let dataRows = function () {
     };
 };
 
-async function createProjectPlans()
-{
+async function createProjectPlans(resolve, reject) {
     // Объект для создания записи План продаж на проект
     let dataRecord = {};
 
     for (let counter = 0; counter < dataRows().count; counter++) {
-        dataRecord["mtr_buildingid@odata.bind"] = `/mtr_buildings(${
-        dataRows().rows[counter][2]})`;
+        let bildingsId = dataRows().rows[counter][2];
+        dataRecord["mtr_buildingid@odata.bind"] = `/mtr_buildings(${bildingsId})`;
 
-        if (dataRows().rows[counter][3] != null && dataRows().rows[counter][3] != undefined) {
-            dataRecord["ownerid@odata.bind"] = `/teams(${
-            dataRows().rows[counter][3]})`;
+        let teamsId = dataRows().rows[counter][3];
+        if (teamsId != null && teamsId != undefined) {
+            dataRecord["ownerid@odata.bind"] = `/teams(${teamsId})`;
         }
 
         dataRecord.mtr_month = document.getElementById("month").value;
         dataRecord.mtr_year = document.getElementById("year").value;
-        dataRecord.mtr_name = `${dataRows().rows[counter][0]}-${
-        document.getElementById("month").selectedOptions[0].text}-${document.getElementById("year").selectedOptions[0].text}`;
         dataRecord.mtr_project_winner = 1;
+
+        let nameBuilding = dataRows().rows[counter][0];
+        let month = document.getElementById("month").selectedOptions[0].text;
+        let year = document.getElementById("year").selectedOptions[0].text;
+        dataRecord.mtr_name = `${nameBuilding}-${month}-${year}`;
 
         // Создание планов продаж на проект
         let projectSalesPlanId = await new Promise((resolve, reject) => createProjectSalesPlan(dataRecord, resolve, reject));
@@ -131,6 +134,7 @@ async function createProjectPlans()
         // Создание планов продаж на всех менеджеров в группе ответственных выбранного застройщика
         createManagerSalesPlan(dataRecord, projectSalesPlanId);
     }
+    resolve();
 }
 
 function createProjectSalesPlan(dataRecord, resolve, reject) {
@@ -155,8 +159,7 @@ function createProjectSalesPlan(dataRecord, resolve, reject) {
             resolve(projectSalesPlanId);
         },
         error: function (xhr, textStatus, errorThrown) {
-            reject(`${textStatus} ${errorThrown}`);
-            deactivateLoader();
+            console.error(`${textStatus} /// ${errorThrown}`);
         }
     });
 }
@@ -174,7 +177,7 @@ async function createManagerSalesPlan(dataRecordProjectPlan, projectSalesPlanId)
 
     // Получаем всех пользователей в групппе ответственных застройщика
     let listMembers = await new Promise((resolve, reject) => getMemberTeam(dataRecordProjectPlan, resolve, reject));
-    if (listMembers == undefined && listMembers == null) {
+    if (listMembers == undefined || listMembers == null) {
         return;
     }
 
@@ -205,23 +208,27 @@ async function createManagerSalesPlan(dataRecordProjectPlan, projectSalesPlanId)
                 XMLHttpRequest.setRequestHeader("Accept", "application/json");
             },
             async: true,
-            success: function (data, textStatus, xhr) {
-                deactivateLoader();
-            },
+            success: function (data, textStatus, xhr) { console.log("success create sales competitor"); },
             error: function (xhr, textStatus, errorThrown) {
                 console.error(`${textStatus} /// ${errorThrown}`);
-                deactivateLoader();
             }
         });
     }
 }
 
 function getMemberTeam(dataRecordProjectPlan, resolve, reject) {
+    let teamId = dataRecordProjectPlan["ownerid@odata.bind"];
+    if (teamId == undefined || teamId == null) {
+        return;
+    }
+
+    teamId = teamId.replace("/teams(", "").replace(")", "");
+
     $.ajax({
         type: "GET",
         contentType: "application/json; charset=utf-8",
         datatype: "json",
-        url: `${window.location.protocol}//${window.location.host}/api/data/v9.1/teammemberships?$select=systemuserid,teamid&$filter=teamid eq ${dataRecordProjectPlan["ownerid@odata.bind"].replace("/teams(", "").replace(")", "")}`,
+        url: `${window.location.protocol}//${window.location.host}/api/data/v9.1/teammemberships?$select=systemuserid,teamid&$filter=teamid eq ${teamId}`,
         beforeSend: function (XMLHttpRequest) {
             XMLHttpRequest.setRequestHeader("OData-MaxVersion", "4.0");
             XMLHttpRequest.setRequestHeader("OData-Version", "4.0");
@@ -235,12 +242,15 @@ function getMemberTeam(dataRecordProjectPlan, resolve, reject) {
         },
         error: function (xhr, textStatus, errorThrown) {
             console.error(`${textStatus} /// ${errorThrown}`);
-            deactivateLoader();
         }
     });
 }
 
 function checkUserActive(userId, resolve, reject) {
+    if (userId == undefined || userId == null) {
+        return;
+    }
+
     // Возвращение результирующего объекта, который в себя включает
     // булево свойство, означающее найден ли пользователь (bool)
     // Имя пользователя (data)
@@ -265,16 +275,13 @@ function checkUserActive(userId, resolve, reject) {
                 resultObjRequest.message = "success";
                 resultObjRequest.data = data.value[0];
                 resolve(resultObjRequest);
-                return;
             }
             resultObjRequest.bool = data.value.length > 0;
-            resultObjRequest.message = "success";
+            resultObjRequest.message = "not found";
             resolve(resultObjRequest);
-            return;
         },
         error: function (xhr, textStatus, errorThrown) {
             console.error(`${textStatus} /// ${errorThrown}`);
-            deactivateLoader();
         }
     });
 }
